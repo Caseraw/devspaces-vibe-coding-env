@@ -1,0 +1,75 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: build-devfile-image
+  labels:
+    app.kubernetes.io/part-of: devspaces-vibe-coding
+spec:
+  description: >
+    Clone a Git repository and build a DevFile container image, then push it
+    to the OpenShift internal image registry.
+  params:
+    - name: git-url
+      type: string
+      description: Git repository URL.
+    - name: git-revision
+      type: string
+      default: main
+      description: Branch, tag, or commit SHA.
+    - name: image-name
+      type: string
+      description: >
+        Full image reference for the internal registry.
+        Example: image-registry.openshift-image-registry.svc:5000/my-namespace/base:latest
+    - name: containerfile-path
+      type: string
+      default: devfiles/base/Containerfile
+      description: Path to the Containerfile relative to the repository root.
+    - name: build-context
+      type: string
+      default: "."
+      description: Build context directory relative to the repository root.
+
+  workspaces:
+    - name: shared-workspace
+      description: PVC shared between pipeline tasks for source code and build context.
+
+  tasks:
+    - name: clone
+      taskRef:
+        name: git-clone
+      params:
+        - name: url
+          value: $(params.git-url)
+        - name: revision
+          value: $(params.git-revision)
+      workspaces:
+        - name: output
+          workspace: shared-workspace
+
+    - name: build-and-push
+      taskRef:
+        name: buildah-build-push
+      runAfter:
+        - clone
+      params:
+        - name: IMAGE
+          value: $(params.image-name)
+        - name: CONTAINERFILE
+          value: $(params.containerfile-path)
+        - name: CONTEXT
+          value: $(params.build-context)
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+
+  results:
+    - name: commit-sha
+      description: The Git commit SHA that was built.
+      value: $(tasks.clone.results.commit)
+    - name: image-digest
+      description: The digest of the built image.
+      value: $(tasks.build-and-push.results.IMAGE_DIGEST)
+    - name: image-url
+      description: The full image reference that was pushed.
+      value: $(tasks.build-and-push.results.IMAGE_URL)

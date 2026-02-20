@@ -1,0 +1,26 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: build-base-
+  labels:
+    app.kubernetes.io/part-of: devspaces-vibe-coding
+    tekton.dev/pipeline: build-devfile-image
+spec:
+  pipelineRef:
+    name: build-devfile-image
+  params:
+    - name: git-url
+      value: https://github.com/devspaces-vibe-coding/devspaces-vibe-coding-env.git
+    - name: git-revision
+      value: main
+    - name: image-name
+      # Replace <namespace> with the OpenShift namespace where the pipeline runs
+      value: image-registry.openshift-image-registry.svc:5000/<namespace>/devspaces-vibe-coding-base:latest
+    - name: containerfile-path
+      value: devfiles/base/Containerfile
+    - name: build-context
+      value: "."
+  workspaces:
+    - name: shared-workspace
+      persistentVolumeClaim:
+        claimName: devspaces-vibe-coding-ws

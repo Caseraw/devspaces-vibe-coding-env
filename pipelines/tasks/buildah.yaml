@@ -1,0 +1,103 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: buildah-build-push
+  labels:
+    app.kubernetes.io/part-of: devspaces-vibe-coding
+spec:
+  description: >
+    Build a container image from a Containerfile using buildah and push it
+    to the OpenShift internal image registry.
+  params:
+    - name: IMAGE
+      type: string
+      description: >
+        Full image reference including registry, namespace, name, and tag.
+        Example: image-registry.openshift-image-registry.svc:5000/my-namespace/my-image:latest
+    - name: CONTAINERFILE
+      type: string
+      default: Containerfile
+      description: Path to the Containerfile relative to the build context.
+    - name: CONTEXT
+      type: string
+      default: "."
+      description: Build context directory relative to the workspace root.
+    - name: TLSVERIFY
+      type: string
+      default: "false"
+      description: Verify TLS certificates when pushing.
+    - name: STORAGE_DRIVER
+      type: string
+      default: vfs
+      description: Buildah storage driver (vfs is safest for unprivileged builds).
+  workspaces:
+    - name: source
+      description: Workspace containing the source code and Containerfile.
+  results:
+    - name: IMAGE_DIGEST
+      description: Digest of the image that was built and pushed.
+    - name: IMAGE_URL
+      description: Full image reference that was pushed.
+  steps:
+    - name: build
+      image: registry.redhat.io/rhel8/buildah:latest
+      env:
+        - name: PARAM_IMAGE
+          value: $(params.IMAGE)
+        - name: PARAM_CONTAINERFILE
+          value: $(params.CONTAINERFILE)
+        - name: PARAM_CONTEXT
+          value: $(params.CONTEXT)
+        - name: PARAM_TLSVERIFY
+          value: $(params.TLSVERIFY)
+        - name: PARAM_STORAGE_DRIVER
+          value: $(params.STORAGE_DRIVER)
+        - name: WORKSPACE_SOURCE_PATH
+          value: $(workspaces.source.path)
+      securityContext:
+        capabilities:
+          add:
+            - SETFCAP
+      script: |
+        #!/usr/bin/env bash
+        set -eu
+
+        cd "${WORKSPACE_SOURCE_PATH}"
+
+        buildah --storage-driver="${PARAM_STORAGE_DRIVER}" bud \
+          --format=oci \
+          --tls-verify="${PARAM_TLSVERIFY}" \
+          -f "${PARAM_CONTAINERFILE}" \
+          -t "${PARAM_IMAGE}" \
+          "${PARAM_CONTEXT}"
+
+        buildah --storage-driver="${PARAM_STORAGE_DRIVER}" push \
+          --tls-verify="${PARAM_TLSVERIFY}" \
+          --digestfile="/tmp/image-digest" \
+          "${PARAM_IMAGE}" \
+          "docker://${PARAM_IMAGE}"
+
+        DIGEST=$(cat /tmp/image-digest)
+        echo -n "${DIGEST}" > "$(results.IMAGE_DIGEST.path)"
+        echo -n "${PARAM_IMAGE}" > "$(results.IMAGE_URL.path)"
+
+        echo "Pushed ${PARAM_IMAGE} @ ${DIGEST}"
+
+    - name: verify
+      image: registry.redhat.io/rhel8/buildah:latest
+      env:
+        - name: PARAM_IMAGE
+          value: $(params.IMAGE)
+        - name: PARAM_TLSVERIFY
+          value: $(params.TLSVERIFY)
+        - name: PARAM_STORAGE_DRIVER
+          value: $(params.STORAGE_DRIVER)
+      script: |
+        #!/usr/bin/env bash
+        set -eu
+
+        buildah --storage-driver="${PARAM_STORAGE_DRIVER}" pull \
+          --tls-verify="${PARAM_TLSVERIFY}" \
+          "docker://${PARAM_IMAGE}"
+
+        echo "Verified: ${PARAM_IMAGE} is pullable"

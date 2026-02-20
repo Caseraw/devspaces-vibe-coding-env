@@ -1,0 +1,9 @@
+{
+    "name": "Devcontainer for DevSpaces Vibe Coding",
+    "build": {
+        "dockerfile": "Containerfile"
+    },
+    "remoteUser": "root",
+    "containerUser": "root"
+    // "postStartCommand": "chown -R root:root /workspaces 2>/dev/null || true"
+}

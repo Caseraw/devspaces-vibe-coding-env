@@ -1,0 +1,157 @@
+# Base Vibe Coding Image for OpenShift DevSpaces
+# Fedora-based development environment with cloud-native CLI tools
+# Architecture: x86_64 (amd64) — the supported architecture for Red Hat OpenShift
+#
+# Build:
+#   podman build -t devspaces-vibe-coding-base:latest -f devfiles/base/Containerfile .
+
+FROM fedora:42
+
+LABEL maintainer="DevSpaces Vibe Coding Team"
+LABEL description="Fedora-based development environment for OpenShift DevSpaces"
+LABEL io.openshift.devspaces.component="dev-tools"
+
+# -- System Packages -----------------------------------------------------------
+RUN dnf install -y \
+    bash \
+    bash-completion \
+    curl \
+    wget \
+    git \
+    tree \
+    less \
+    more \
+    tar \
+    zip \
+    unzip \
+    jq \
+    rsync \
+    which \
+    vim \
+    vim-enhanced \
+    nano \
+    iputils \
+    bind-utils \
+    httpd-tools \
+    iproute \
+    traceroute \
+    procps-ng \
+    util-linux-core \
+    htop \
+    net-tools \
+    telnet \
+    tcpdump \
+    nmap \
+    mtr \
+    strace \
+    lsof \
+    iftop \
+    iperf \
+    iperf3 \
+    tmux \
+    screen \
+    nc \
+    python3 \
+    python3-pip \
+    make \
+    gcc \
+    gdb \
+    openssl \
+    openssh-clients \
+    ansible \
+    skopeo \
+    buildah \
+    podman && \
+    dnf clean all
+
+# -- OpenShift & Kubernetes CLIs -----------------------------------------------
+RUN wget -q -O oc.tar.gz \
+      "https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/stable/openshift-client-linux.tar.gz" && \
+    tar -xzf oc.tar.gz && \
+    install -m 755 oc /usr/local/bin/oc && \
+    install -m 755 kubectl /usr/local/bin/kubectl && \
+    oc completion bash > /etc/bash_completion.d/oc && \
+    kubectl completion bash > /etc/bash_completion.d/kubectl && \
+    rm -rf oc.tar.gz oc kubectl README.md
+
+# -- KubeVirt virtctl -----------------------------------------------------------
+RUN wget -q -O virtctl \
+      "https://github.com/kubevirt/kubevirt/releases/download/v1.5.3/virtctl-v1.5.3-linux-amd64" && \
+    install -m 755 virtctl /usr/local/bin/virtctl && \
+    virtctl completion bash > /etc/bash_completion.d/virtctl && \
+    rm -rf virtctl
+
+# -- Kustomize ------------------------------------------------------------------
+RUN wget -q -O kustomize.tar.gz \
+      "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv5.7.0/kustomize_v5.7.0_linux_amd64.tar.gz" && \
+    tar -xzf kustomize.tar.gz && \
+    install -m 755 kustomize /usr/local/bin/kustomize && \
+    kustomize completion bash > /etc/bash_completion.d/kustomize && \
+    rm -rf kustomize.tar.gz kustomize
+
+# -- Helm -----------------------------------------------------------------------
+RUN wget -q -O helm.tar.gz \
+      "https://get.helm.sh/helm-v3.19.0-linux-amd64.tar.gz" && \
+    tar -xzf helm.tar.gz && \
+    install -m 755 linux-amd64/helm /usr/local/bin/helm && \
+    helm completion bash > /etc/bash_completion.d/helm && \
+    rm -rf helm.tar.gz linux-amd64
+
+# -- Tekton CLI -----------------------------------------------------------------
+RUN dnf install -y \
+      "https://github.com/tektoncd/cli/releases/download/v0.42.0/tektoncd-cli-0.42.0_Linux-64bit.rpm" && \
+    dnf clean all && \
+    tkn completion bash > /etc/bash_completion.d/tkn
+
+# -- roxctl (Red Hat ACS) -------------------------------------------------------
+RUN curl -L -f -o roxctl \
+      "https://mirror.openshift.com/pub/rhacs/assets/latest/bin/linux/roxctl" && \
+    install -m 755 roxctl /usr/local/bin/roxctl && \
+    roxctl completion bash > /etc/bash_completion.d/roxctl && \
+    rm -rf roxctl
+
+# -- AWS CLI --------------------------------------------------------------------
+RUN curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o awscliv2.zip && \
+    unzip -q awscliv2.zip && \
+    ./aws/install && \
+    rm -rf awscliv2.zip aws
+
+# -- Azure CLI ------------------------------------------------------------------
+RUN rpm --import https://packages.microsoft.com/keys/microsoft.asc && \
+    dnf install -y \
+      https://packages.microsoft.com/config/fedora/42/packages-microsoft-prod.rpm && \
+    dnf install -y azure-cli && \
+    dnf clean all
+
+# -- OpenShift Installer --------------------------------------------------------
+RUN wget -q -O openshift-install-linux.tar.gz \
+      "https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/stable/openshift-install-linux.tar.gz" && \
+    tar -xzf openshift-install-linux.tar.gz && \
+    install -m 755 openshift-install /usr/local/bin/openshift-install && \
+    openshift-install completion bash > /etc/bash_completion.d/openshift-install && \
+    rm -rf openshift-install-linux.tar.gz openshift-install
+
+# -- ROSA CLI -------------------------------------------------------------------
+RUN wget -q -O rosa.tar.gz \
+      "https://github.com/openshift/rosa/releases/download/v1.2.56/rosa_Linux_x86_64.tar.gz" && \
+    tar -xzf rosa.tar.gz && \
+    install -m 755 rosa /usr/local/bin/rosa && \
+    rosa completion bash > /etc/bash_completion.d/rosa && \
+    rm -rf rosa.tar.gz rosa
+
+# -- Knative CLI ----------------------------------------------------------------
+RUN curl -L -f -o kn \
+      "https://github.com/knative/client/releases/download/knative-v1.19.5/kn-linux-amd64" && \
+    install -m 755 kn /usr/local/bin/kn && \
+    rm -rf kn
+
+# -- Default shell config -------------------------------------------------------
+ENV SHELL=/bin/bash
+ENV HOME=/home/user
+
+RUN useradd -m -s /bin/bash -u 1001 user && \
+    mkdir -p /projects && \
+    chown -R user:user /projects /home/user
+
+USER user
+WORKDIR /projects

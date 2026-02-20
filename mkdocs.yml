@@ -1,0 +1,65 @@
+site_name: DevSpaces Vibe Coding Environment
+site_description: >
+  Documentation for the Vibe Coding project — a Fedora-based development
+  environment purpose-built for Red Hat OpenShift DevSpaces.
+site_url: https://devspaces-vibe-coding.github.io/devspaces-vibe-coding-env/
+
+repo_name: devspaces-vibe-coding-env
+repo_url: https://github.com/devspaces-vibe-coding/devspaces-vibe-coding-env
+
+docs_dir: docs
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: red
+      accent: red
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: red
+      accent: red
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.instant
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - content.code.copy
+    - content.code.annotate
+    - search.suggest
+    - search.highlight
+  icon:
+    repo: fontawesome/brands/github
+
+plugins:
+  - search
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.tabbed:
+      alternate_style: true
+  - attr_list
+  - md_in_html
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Getting Started: getting-started.md
+  - DevFiles:
+      - Overview: devfiles/index.md
+      - Base Environment: devfiles/base.md
+  - Pipelines: pipelines.md
+  - Architecture: architecture.md
+  - Contributing: contributing.md
